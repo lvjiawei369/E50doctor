@@ -469,8 +469,7 @@
 </div>
 
 <script>
-var API_KEY     = 'sk-5082aa3e2da84c35be95dce5a8273e6a';
-var APP_URL     = 'https://dashscope.aliyuncs.com/api/v1/apps/93abde237c6a4fd5ac06dac238edb184/completion';
+var PROXY_URL   = 'https://ac-doctor-proxy-kxiujcaqwq.cn-qingdao.fcapp.run';
 var STORAGE_KEY = 'ac-doctor-conversations';
 
 var conversations = [];
@@ -734,79 +733,28 @@ function callAI(prompt, sessionId) {
   setThinking(true);
   var convId = activeId;
 
-  var inputObj = { prompt: prompt };
-  if (sessionId) inputObj.session_id = sessionId;
+  var reqBody = { prompt: prompt };
+  if (sessionId) reqBody.session_id = sessionId;
 
-  fetch(APP_URL, {
+  fetch(PROXY_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + API_KEY,
-      'X-DashScope-SSE': 'enable'
-    },
-    body: JSON.stringify({
-      input: inputObj,
-      parameters: { incremental_output: true }
-    })
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(reqBody)
   })
   .then(function(res) {
-    if (!res.ok) {
-      return res.text().then(function(t) {
-        var msg = 'HTTP ' + res.status;
-        try { msg = JSON.parse(t).message || msg; } catch(e) {}
-        throw new Error(msg);
-      });
-    }
-
-    var bubble = null;
-    var fullText = '';
-    var returnedSessionId = null;
-    var reader = res.body.getReader();
-    var decoder = new TextDecoder();
-    var buffer = '';
-
-    function pump() {
-      return reader.read().then(function(result) {
-        if (result.done) {
-          setThinking(false);
-          finishStream(convId, fullText, returnedSessionId);
-          return;
-        }
-        buffer += decoder.decode(result.value, { stream: true });
-        var lines = buffer.split('\n');
-        buffer = lines.pop();
-
-        for (var i = 0; i < lines.length; i++) {
-          var line = lines[i].trim();
-          if (line.indexOf('data:') !== 0) continue;
-          var jsonStr = line.slice(5);
-          try {
-            var data = JSON.parse(jsonStr);
-            if (data.output) {
-              if (data.output.session_id && !returnedSessionId) {
-                returnedSessionId = data.output.session_id;
-              }
-              if (data.output.text) {
-                if (!bubble) {
-                  setThinking(false);
-                  bubble = createStreamBubble();
-                }
-                fullText += data.output.text;
-                bubble.innerHTML = renderMd(fullText);
-                scrollBottom();
-              }
-            }
-          } catch(e) {}
-        }
-        return pump();
-      });
-    }
-
-    return pump();
+    return res.json().then(function(data) {
+      if (!res.ok) throw new Error(data.error || 'HTTP ' + res.status);
+      return data;
+    });
+  })
+  .then(function(data) {
+    setThinking(false);
+    finishStream(convId, data.reply, data.sessionId);
+    appendBubble('assistant', data.reply, nowTime());
   })
   .catch(function(err) {
     setThinking(false);
-    showError(err.message || '请求失败，请检查网络或 API Key');
+    showError(err.message || '请求失败，请检查网络');
   });
 }
 
