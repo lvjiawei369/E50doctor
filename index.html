@@ -711,6 +711,7 @@ function handleSend() {
 
 function sendText(text) {
   if (!text || isThinking) return;
+  unlockAudio();
   hideError();
   inputEl.value = '';
   inputEl.style.height = 'auto';
@@ -846,6 +847,19 @@ function finishStream(convId, fullText, returnedSessionId) {
     })
     .catch(function() {});
   }
+}
+
+var audioUnlocked = false;
+function unlockAudio() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  var ctx = new (window.AudioContext || window.webkitAudioContext)();
+  var buf = ctx.createBuffer(1, 1, 22050);
+  var src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.connect(ctx.destination);
+  src.start(0);
+  ctx.close();
 }
 
 var ttsEnabled = true;
