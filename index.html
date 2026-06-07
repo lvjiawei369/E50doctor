@@ -363,7 +363,7 @@
   #text-input {
     flex: 1; min-height: 44px; max-height: 140px;
     border: 1px solid #d1d5db; border-radius: 22px;
-    padding: 11px 16px 8px; font-size: 11px; font-family: inherit;
+    padding: 11px 16px 8px; font-size: 14px; font-family: inherit;
     line-height: 1.5; resize: none; background: #f9fafb; color: #111;
     outline: none; overflow-y: auto;
     transition: border-color .15s, box-shadow .15s;
@@ -986,7 +986,12 @@ if (SpeechRecognition) {
 
   recognition.onerror = function(e) {
     stopVoice();
-    if (e.error === 'not-allowed') showError('请允许麦克风权限后再试');
+    var msg = {
+      'not-allowed': '请在浏览器设置中允许麦克风权限',
+      'no-speech': '未检测到语音，请重试',
+      'network': '网络错误，请检查连接',
+    }[e.error] || ('语音错误：' + e.error);
+    showError(msg);
   };
 
   recognition.onend = function() { stopVoice(); };
