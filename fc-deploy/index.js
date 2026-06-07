@@ -48,7 +48,7 @@ const server = http.createServer((req, res) => {
           res.end(JSON.stringify({ error: 'text required' }));
           return;
         }
-        const plain = text.replace(/[#*`>\-_~\[\]()]/g, '').replace(/\n+/g, '，').slice(0, 1000);
+        const plain = text.replace(/[#*`>\-_~\[\]()]/g, '').replace(/\n+/g, '，');
         const payload = JSON.stringify({
           model: 'cosyvoice-v2',
           input: { text: plain },
