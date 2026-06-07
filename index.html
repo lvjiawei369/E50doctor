@@ -313,7 +313,8 @@
   .msg-body th { background: #f9fafb; font-weight: 600; }
 
   /* ── Thinking ── */
-  #thinking { display: none; padding: 12px 16px; max-width: 720px; margin: 0 auto; }
+  #thinking { display: none; padding: 12px 16px; }
+  .thinking-inner { display: flex; flex-direction: column; gap: 6px; }
   .dots {
     display: flex; gap: 5px; padding: 4px 0;
   }
@@ -323,6 +324,7 @@
   }
   .dot:nth-child(2) { animation-delay: .15s; }
   .dot:nth-child(3) { animation-delay: .3s; }
+  .thinking-text { font-size: 11px; color: #9ca3af; }
   @keyframes bounce {
     0%,60%,100% { transform: translateY(0); }
     30% { transform: translateY(-6px); }
@@ -424,7 +426,6 @@
       </button>
       <img src="logo.png" width="28" height="28" style="border-radius:4px;flex-shrink:0;" alt="飞奕logo">
       <span id="nav-title">飞奕AI空调诊断医生</span>
-      <span id="nav-badge">AI 诊断</span>
     </div>
     <div>
       <button id="new-conv-btn" onclick="newChat()" title="新建对话">
@@ -443,7 +444,10 @@
     </div>
 
     <div id="thinking">
-      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      <div class="thinking-inner">
+        <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        <span class="thinking-text">思考中…</span>
+      </div>
     </div>
 
     <div id="error-bar">
