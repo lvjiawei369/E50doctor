@@ -830,12 +830,20 @@ function finishStream(convId, fullText, returnedSessionId) {
   persist();
   renderSidebar();
   if (ttsEnabled && reply) {
-    var plain = reply.replace(/[#*`>\-_~\[\]()]/g, '').replace(/\n+/g, '，');
-    var utter = new SpeechSynthesisUtterance(plain);
-    utter.lang = 'zh-CN';
-    utter.rate = 1.1;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utter);
+    var plain = reply.replace(/[#*`>\-_~\[\]()]/g, '').replace(/\n+/g, '，').slice(0, 300);
+    fetch(PROXY_URL + '/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: plain })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.url) {
+        var audio = new Audio(d.url);
+        audio.play();
+      }
+    })
+    .catch(function() {});
   }
 }
 
@@ -845,7 +853,6 @@ function toggleTTS() {
   ttsEnabled = !ttsEnabled;
   if (!ttsBtnEl) ttsBtnEl = document.getElementById('tts-btn');
   ttsBtnEl.classList.toggle('active', ttsEnabled);
-  if (!ttsEnabled) window.speechSynthesis.cancel();
 }
 
 function retry() {
