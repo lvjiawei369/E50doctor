@@ -831,7 +831,7 @@ function finishStream(convId, fullText, returnedSessionId) {
   persist();
   renderSidebar();
   if (ttsEnabled && reply) {
-    var plain = reply.replace(/[#*`>\-_~\[\]()]/g, '').replace(/\n+/g, '，').slice(0, 300);
+    var plain = reply.replace(/[#*`>\-_~\[\]()]/g, '').replace(/\n+/g, '，').slice(0, 1000);
     fetch(PROXY_URL + '/tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
