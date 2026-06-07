@@ -290,6 +290,11 @@
     word-break: break-word;
   }
   .msg-time { font-size: 10px; color: #d1d5db; margin-top: 4px; }
+  .msg-actions { display: flex; gap: 8px; margin-top: 6px; align-items: center; }
+  .msg-row.user .msg-actions { display: none; }
+  .act-btn { background: none; border: none; padding: 2px 3px; cursor: pointer; color: #c9cdd4; line-height: 0; border-radius: 4px; transition: color 0.15s; }
+  .act-btn:active { color: #2563eb; }
+  .act-btn.copied { color: #16a34a; }
 
   /* ── Markdown content ── */
   .msg-body h1 { font-size: 20px; font-weight: 700; margin: 16px 0 8px; }
@@ -678,6 +683,51 @@ function renderMessages(msgs) {
   scrollBottom();
 }
 
+function makeActions(bodyEl) {
+  var wrap = document.createElement('div');
+  wrap.className = 'msg-actions';
+
+  // 播放语音
+  var playBtn = document.createElement('button');
+  playBtn.className = 'act-btn';
+  playBtn.title = '播放语音';
+  playBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+  playBtn.onclick = function() {
+    var text = (bodyEl.innerText || bodyEl.textContent || '').replace(/\n+/g, '，');
+    if (!text) return;
+    var plain = text.replace(/[#*`>\-_~\[\]()]/g, '');
+    fetch(PROXY_URL + '/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: plain })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) { if (d.url) { var a = new Audio(d.url); a.play(); } })
+    .catch(function() {});
+  };
+
+  // 复制
+  var copyBtn = document.createElement('button');
+  copyBtn.className = 'act-btn';
+  copyBtn.title = '复制';
+  copyBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+  copyBtn.onclick = function() {
+    var text = bodyEl.innerText || bodyEl.textContent || '';
+    navigator.clipboard.writeText(text).then(function() {
+      copyBtn.classList.add('copied');
+      copyBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+      setTimeout(function() {
+        copyBtn.classList.remove('copied');
+        copyBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+      }, 2000);
+    }).catch(function() {});
+  };
+
+  wrap.appendChild(playBtn);
+  wrap.appendChild(copyBtn);
+  return wrap;
+}
+
 function appendBubble(role, content, time) {
   welcomeEl.style.display = 'none';
   var isUser = role === 'user';
@@ -698,6 +748,7 @@ function appendBubble(role, content, time) {
 
   row.appendChild(label);
   row.appendChild(body);
+  if (!isUser) row.appendChild(makeActions(body));
   row.appendChild(ts);
   messagesEl.insertBefore(row, thinkingEl);
   scrollBottom();
@@ -754,6 +805,7 @@ function createStreamBubble() {
 
   row.appendChild(label);
   row.appendChild(body);
+  row.appendChild(makeActions(body));
   row.appendChild(ts);
   messagesEl.insertBefore(row, thinkingEl);
   return body;
