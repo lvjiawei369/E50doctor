@@ -233,6 +233,15 @@
   }
   .suggestion-btn:hover { border-color: #93c5fd; background: #eff6ff; color: #1d4ed8; }
   .suggestion-btn:active { transform: scale(.98); }
+  #refresh-btn {
+    align-self: center;
+    margin-top: 4px;
+    font-size: 12px; color: #9ca3af;
+    border: 1px solid #e5e7eb; border-radius: 999px;
+    padding: 4px 14px; background: none; cursor: pointer;
+    font-family: inherit; transition: all .15s;
+  }
+  #refresh-btn:hover { color: #6b7280; border-color: #d1d5db; }
 
   /* ── Messages ── */
   .msg-row {
@@ -441,6 +450,7 @@
       <h1>有什么我能帮您的吗？</h1>
       <div id="suggestions">
       </div>
+      <button id="refresh-btn" onclick="renderQuickQuestions()">换一批</button>
     </div>
 
     <div id="thinking">
@@ -740,21 +750,51 @@ function callAI(prompt, sessionId) {
   var reqBody = { prompt: prompt };
   if (sessionId) reqBody.session_id = sessionId;
 
+  var bubble = null;
+  var fullText = '';
+  var returnedSessionId = null;
+
   fetch(PROXY_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(reqBody)
   })
   .then(function(res) {
-    return res.json().then(function(data) {
-      if (!res.ok) throw new Error(data.error || 'HTTP ' + res.status);
-      return data;
-    });
-  })
-  .then(function(data) {
-    setThinking(false);
-    finishStream(convId, data.reply, data.sessionId);
-    appendBubble('assistant', data.reply, nowTime());
+    if (!res.ok) return res.json().then(function(d) { throw new Error(d.error || 'HTTP ' + res.status); });
+    var reader = res.body.getReader();
+    var decoder = new TextDecoder();
+    var buffer = '';
+
+    function pump() {
+      return reader.read().then(function(result) {
+        if (result.done) {
+          setThinking(false);
+          finishStream(convId, fullText, returnedSessionId);
+          return;
+        }
+        buffer += decoder.decode(result.value, { stream: true });
+        var lines = buffer.split('\n');
+        buffer = lines.pop();
+        for (var i = 0; i < lines.length; i++) {
+          var line = lines[i].trim();
+          if (line.indexOf('data:') !== 0) continue;
+          try {
+            var data = JSON.parse(line.slice(5));
+            if (data.output) {
+              if (data.output.session_id && !returnedSessionId) returnedSessionId = data.output.session_id;
+              if (data.output.text) {
+                if (!bubble) { setThinking(false); bubble = createStreamBubble(); }
+                fullText += data.output.text;
+                bubble.innerHTML = renderMd(fullText);
+                scrollBottom();
+              }
+            }
+          } catch(e) {}
+        }
+        return pump();
+      });
+    }
+    return pump();
   })
   .catch(function(err) {
     setThinking(false);
