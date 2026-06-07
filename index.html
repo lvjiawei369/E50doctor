@@ -194,6 +194,17 @@
     transition: background .15s;
   }
   #new-conv-btn:hover { background: #f3f4f6; }
+  #tts-btn {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    border: none; background: none;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: background .15s;
+    color: #9ca3af;
+  }
+  #tts-btn:hover { background: #f3f4f6; }
+  #tts-btn.active { color: #2563eb; }
 
   /* ── Messages ── */
   #messages {
@@ -436,7 +447,10 @@
       <img src="logo.png" width="28" height="28" style="border-radius:4px;flex-shrink:0;" alt="飞奕logo">
       <span id="nav-title">飞奕AI空调诊断医生</span>
     </div>
-    <div>
+    <div style="display:flex;align-items:center;gap:4px;">
+      <button id="tts-btn" onclick="toggleTTS()" title="语音播报">
+        <svg viewBox="0 0 1024 1024" width="18" height="18" xmlns="http://www.w3.org/2000/svg"><path d="M576 128v768l-320-192H128V320h128L576 128z m192 192a288 288 0 0 1 0 384l-57.6-57.6A204.8 204.8 0 0 0 768 512a204.8 204.8 0 0 0-57.6-134.4L768 320z m128-128a416 416 0 0 1 0 640l-57.6-57.6a332.8 332.8 0 0 0 0-524.8L896 192z" fill="currentColor"/></svg>
+      </button>
       <button id="new-conv-btn" onclick="newChat()" title="新建对话">
         <svg viewBox="0 0 1024 1024" width="20" height="20" xmlns="http://www.w3.org/2000/svg"><path d="M864 480H544V160a32 32 0 10-64 0v320H160a32 32 0 100 64h320v320a32 32 0 1064 0V544h320a32 32 0 100-64z" fill="#666"/></svg>
       </button>
@@ -815,6 +829,23 @@ function finishStream(convId, fullText, returnedSessionId) {
   }
   persist();
   renderSidebar();
+  if (ttsEnabled && reply) {
+    var plain = reply.replace(/[#*`>\-_~\[\]()]/g, '').replace(/\n+/g, '，');
+    var utter = new SpeechSynthesisUtterance(plain);
+    utter.lang = 'zh-CN';
+    utter.rate = 1.1;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utter);
+  }
+}
+
+var ttsEnabled = false;
+var ttsBtnEl = null;
+function toggleTTS() {
+  ttsEnabled = !ttsEnabled;
+  if (!ttsBtnEl) ttsBtnEl = document.getElementById('tts-btn');
+  ttsBtnEl.classList.toggle('active', ttsEnabled);
+  if (!ttsEnabled) window.speechSynthesis.cancel();
 }
 
 function retry() {
