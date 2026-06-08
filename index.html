@@ -693,17 +693,9 @@ function makeActions(bodyEl) {
   playBtn.title = '播放语音';
   playBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
   playBtn.onclick = function() {
-    var text = (bodyEl.innerText || bodyEl.textContent || '').replace(/\n+/g, '，');
+    var text = (bodyEl.innerText || bodyEl.textContent || '');
     if (!text) return;
-    var plain = text.replace(/[#*`>\-_~\[\]()]/g, '');
-    fetch(PROXY_URL + '/tts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: plain })
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(d) { if (d.url) { var a = new Audio(d.url); a.play(); } })
-    .catch(function() {});
+    playTTS(text);
   };
 
   // 复制
@@ -884,20 +876,7 @@ function finishStream(convId, fullText, returnedSessionId) {
   persist();
   renderSidebar();
   if (ttsEnabled && reply) {
-    var plain = reply.replace(/[#*`>\-_~\[\]()]/g, '').replace(/\n+/g, '，');
-    fetch(PROXY_URL + '/tts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: plain })
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(d) {
-      if (d.url) {
-        var audio = new Audio(d.url);
-        audio.play();
-      }
-    })
-    .catch(function() {});
+    playTTS(reply);
   }
 }
 
@@ -918,8 +897,29 @@ var ttsEnabled = true;
 var ttsBtnEl = null;
 var ttsIconOn = null;
 var ttsIconOff = null;
+var currentAudio = null;
+
+function playTTS(text) {
+  var plain = text.replace(/[#*`>\-_~\[\]()]/g, '').replace(/\n+/g, '，');
+  fetch(PROXY_URL + '/tts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: plain })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.url && ttsEnabled) {
+      if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+      currentAudio = new Audio(d.url);
+      currentAudio.play();
+      currentAudio.onended = function() { currentAudio = null; };
+    }
+  })
+  .catch(function() {});
+}
 function toggleTTS() {
   ttsEnabled = !ttsEnabled;
+  if (!ttsEnabled && currentAudio) { currentAudio.pause(); currentAudio = null; }
   if (!ttsBtnEl) ttsBtnEl = document.getElementById('tts-btn');
   if (!ttsIconOn) ttsIconOn = document.getElementById('tts-icon-on');
   if (!ttsIconOff) ttsIconOff = document.getElementById('tts-icon-off');
