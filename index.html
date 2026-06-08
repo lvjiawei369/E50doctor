@@ -1075,54 +1075,59 @@ function inlineMd(text) {
 }
 
 // ── Voice input ──────────────────────────────────────────────
-var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-var recognition = null;
 var isRecording = false;
 var voiceBtn = document.getElementById('voice-btn');
-
-if (SpeechRecognition) {
-  recognition = new SpeechRecognition();
-  recognition.lang = 'zh-CN';
-  recognition.continuous = false;
-  recognition.interimResults = true;
-
-  recognition.onresult = function(e) {
-    var transcript = '';
-    for (var i = 0; i < e.results.length; i++) {
-      transcript += e.results[i][0].transcript;
-    }
-    inputEl.value = transcript;
-    autoGrow(inputEl);
-    if (e.results[e.results.length - 1].isFinal) {
-      stopVoice();
-      if (transcript.trim()) handleSend();
-    }
-  };
-
-  recognition.onerror = function(e) {
-    stopVoice();
-    var msg = {
-      'not-allowed': '请在浏览器设置中允许麦克风权限',
-      'no-speech': '未检测到语音，请重试',
-      'network': '网络错误，请检查连接',
-    }[e.error] || ('语音错误：' + e.error);
-    showError(msg);
-  };
-
-  recognition.onend = function() { stopVoice(); };
-} else {
-  voiceBtn.style.display = 'none';
-}
+var mediaRecorder = null;
+var audioChunks = [];
 
 function toggleVoice() {
-  if (!recognition) return;
   if (isRecording) {
-    recognition.stop();
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
   } else {
-    recognition.start();
-    isRecording = true;
-    voiceBtn.classList.add('recording');
-    inputEl.placeholder = '正在听...';
+    navigator.mediaDevices.getUserMedia({ audio: true })
+    .then(function(stream) {
+      audioChunks = [];
+      var mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
+      mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
+      mediaRecorder.ondataavailable = function(e) {
+        if (e.data.size > 0) audioChunks.push(e.data);
+      };
+      mediaRecorder.onstop = function() {
+        stream.getTracks().forEach(function(t) { t.stop(); });
+        stopVoice();
+        var blob = new Blob(audioChunks, { type: mimeType });
+        var reader = new FileReader();
+        reader.onloadend = function() {
+          var base64 = reader.result.split(',')[1];
+          inputEl.placeholder = '识别中...';
+          fetch(PROXY_URL + '/asr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ audio: base64, mime: mimeType })
+          })
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            if (d.text) {
+              inputEl.value = d.text;
+              autoGrow(inputEl);
+              handleSend();
+            } else {
+              showError(d.error || '未识别到语音');
+            }
+          })
+          .catch(function() { showError('语音识别失败'); })
+          .finally(function() { inputEl.placeholder = '描述空调故障症状…'; });
+        };
+        reader.readAsDataURL(blob);
+      };
+      mediaRecorder.start();
+      isRecording = true;
+      voiceBtn.classList.add('recording');
+      inputEl.placeholder = '正在听...';
+    })
+    .catch(function() {
+      showError('请在浏览器设置中允许麦克风权限');
+    });
   }
 }
 
