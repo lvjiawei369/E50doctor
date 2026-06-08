@@ -531,6 +531,18 @@ try {
 } catch(e) {}
 renderSidebar();
 
+// 点击列表外部收回所有已展开的删除按钮（只注册一次）
+document.addEventListener('click', function(e) {
+  if (!convListEl.contains(e.target)) {
+    var swiped = convListEl.querySelectorAll('.conv-wrap.swiped');
+    for (var i = 0; i < swiped.length; i++) {
+      swiped[i].classList.remove('swiped');
+      var inner = swiped[i].querySelector('.conv-inner');
+      if (inner) { inner.style.transition = 'transform .2s ease'; inner.style.transform = 'translateX(0)'; }
+    }
+  }
+});
+
 function persist() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations.slice(0, 50))); } catch(e) {}
 }
@@ -630,18 +642,6 @@ function renderSidebar() {
 
     convListEl.appendChild(wrap);
   }
-
-  // 点击列表外部收回所有已展开的删除按钮
-  document.addEventListener('click', function closeSwiped(e) {
-    if (!convListEl.contains(e.target)) {
-      var swiped = convListEl.querySelectorAll('.conv-wrap.swiped');
-      for (var i = 0; i < swiped.length; i++) {
-        swiped[i].classList.remove('swiped');
-        var inner = swiped[i].querySelector('.conv-inner');
-        if (inner) { inner.style.transition = 'transform .2s ease'; inner.style.transform = 'translateX(0)'; }
-      }
-    }
-  });
 }
 
 function activeConv() {
